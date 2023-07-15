@@ -1,3 +1,5 @@
+A gitlab review bot that uses the OpenAI GPT-4 API to automatically point out issues on merge requests.
+
 # Prerequesites
 
 You will need to create a .env file with the following variables:
