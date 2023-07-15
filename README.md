@@ -62,3 +62,7 @@ You can initiate a review on a merge request with a comment like this:
 @BotUser Review this merge request with severity low
 
 The severity can be "low", "medium" or "high". The bot will ignore issues with lower severity. If omitted, severity "low" will be used as threshold, so all issues will be considered.
+
+# Restrictions
+
+The functionality has so far only been tested on small code files. If your merge request includes very large files, the function may not complete, or produce unexecptedly high costs.
