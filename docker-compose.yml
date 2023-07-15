@@ -1,0 +1,13 @@
+version: '3'
+services:
+  gitlab-review-bot:
+    build: .
+    environment:
+      # For example, these variables can be defined in a .env file
+      # in the same directory as this file.
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GITLAB_HOST=${GITLAB_HOST}
+      - GITLAB_ACCESS_TOKEN=${GITLAB_ACCESS_TOKEN}
+      - GITLAB_WEBHOOK_SECRET=${GITLAB_WEBHOOK_SECRET}
+    networks:
+      - default

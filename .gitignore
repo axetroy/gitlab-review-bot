@@ -1,0 +1,5 @@
+node_modules/
+yarn-error.log
+.env
+.ssh
+docker-compose.override.yml
