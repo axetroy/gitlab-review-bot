@@ -67,7 +67,7 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
 
   if (mentionsCurrentUser && asksForReview && severity) {
     const projectId = data.project_id;
-    const mergeRequestId = data.merge_request.id;
+    const mergeRequestId = data.merge_request.iid;
 
     // Call the review function asynchronously
     reviewMergeRequest(projectId, mergeRequestId, severity).catch(error => {
