@@ -38,7 +38,13 @@ export async function reviewFile(
 
   const responses = await getChatCompletionMulti(query, true, 5, 'gpt-4');
 
-  const parsedComments = responses.map(response => parseComments(response));
+  const parsedComments = responses.flatMap(response => {
+    try {
+      return [parseComments(response)];
+    } catch (error) {
+      return [];
+    }
+  });
 
   const finalComments = await getCombinedReviewComments(
     parsedComments,
