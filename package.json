@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@gitbeaker/node": "^35.8.1",
+    "@gitbeaker/rest": "^42.1.0",
     "@types/axios": "^0.14.0",
     "@types/bluebird": "^3.5.38",
     "@types/express": "^4.17.17",

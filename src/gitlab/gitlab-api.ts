@@ -1,5 +1,5 @@
 import { GITLAB_ACCESS_TOKEN, GITLAB_HOST } from '@/config/env';
-import { Gitlab } from '@gitbeaker/node';
+import { Gitlab } from '@gitbeaker/rest';
 
 export const api = new Gitlab({
   host: GITLAB_HOST,
@@ -10,7 +10,7 @@ export const api = new Gitlab({
 export async function testGitlabConnection() {
   console.log('token', GITLAB_ACCESS_TOKEN);
   try {
-    const user = await api.Users.current();
+    const user = await api.Users.showCurrentUser();
     console.log(
       'Connected to GitLab successfully. Current user:',
       user.username

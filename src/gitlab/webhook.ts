@@ -52,7 +52,7 @@ async function handleWebhookRequest(
 }
 
 async function handleMergeRequestComment(commentBody: any, data: any) {
-  const currentUser = await api.Users.current();
+  const currentUser = await api.Users.showCurrentUser();
   const mentionsCurrentUser = commentBody.includes('@' + currentUser.username);
   const asksForReview = commentBody.toLowerCase().includes('review');
 

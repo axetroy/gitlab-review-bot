@@ -1,5 +1,4 @@
 import _, { isFinite, isNumber, sum, sumBy } from 'lodash';
-import { getChatCompletion } from '@/gpt/gpt';
 import { calculateSimilarity, locateInSource } from './locate-in-source';
 import { ReviewComment, Severity } from './review-comment';
 
