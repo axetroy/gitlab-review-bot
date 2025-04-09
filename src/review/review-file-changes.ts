@@ -66,16 +66,24 @@ export async function reviewFile(
       }
     ]
 
+    You should check the code for any potential issues, such as:
+    - Bugs
+    - Performance issues
+    - Security vulnerabilities
+    - Logic errors
+    - Potential improvements
+    - Any other issues that you think are important
+
     But you must to pay attention:
-    1. You should only include issues that are related to the code itself and not the style.
-    2. Only include issues where you are really confident.
-    3. Ignore any issues related to imports from other files.
-    4. If the code is already perfect, please return an empty list.
-    5. If no such issues exist or you don't know the contents of the file, please return an empty list.
-    6. If you don't know how to answer or are missing key information, please return an empty list.
-    7. You need to answer me in ${LANGUAGE}.
-    8. In any case, only the above format is output, and don't explanation of this output is ignored.
-    9. it's fine to create multiple comments on the same line
+    - Follow the best practices of the programming language
+    - Only include issues where you are really confident
+    - Ignore any issues related to imports from other files
+    - If the code is already perfect, please return an empty list
+    - If no such issues exist or you don't know the contents of the file, please return an empty list
+    - If you don't know how to answer or are missing key information, please return an empty list
+    - You need to answer me in ${LANGUAGE}
+    - In any case, only the above format is output, and don't explanation of this output is ignored
+    - it's fine to create multiple comments on the same line
   `;
 
   query += outdent`

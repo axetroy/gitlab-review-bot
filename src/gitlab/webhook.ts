@@ -5,6 +5,38 @@ import { GITLAB_WEBHOOK_SECRET, PORT } from '../config/env';
 import { api } from './gitlab-api';
 import { reviewMergeRequest } from './merge-request';
 
+async function getAllMergeRequestDiscussions(
+  projectId: number,
+  mergeRequestId: number
+) {
+  const discussions = [];
+  let page = 1;
+  let perPage = 100;
+
+  while (true) {
+    const results = await api.MergeRequestDiscussions.all(
+      projectId,
+      mergeRequestId,
+      {
+        page: page,
+        perPage: perPage,
+      }
+    );
+
+    for (const discussion of results) {
+      discussions.push(discussion);
+    }
+
+    if (results.length < perPage) {
+      break; // No more pages
+    }
+
+    page++;
+  }
+
+  return discussions;
+}
+
 export function createWebhookApp() {
   const app = express();
   app.use(express.json());
@@ -79,11 +111,34 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
 
     const projectId = data.project_id;
     const mergeRequestId = data.merge_request.iid;
+    const currentDiscussionId = data.object_attributes.discussion_id;
+    const id = data.object_attributes.id;
 
-    const note = await api.MergeRequestNotes.create(
+    // 获取当前所有机器人的审核，然后清理
+    const discussions = await getAllMergeRequestDiscussions(
+      projectId,
+      mergeRequestId
+    );
+
+    for (const discussion of discussions) {
+      for (const note of discussion.notes ?? []) {
+        if (note.author.username === currentUser.username) {
+          // remove the bot's own comment
+          await api.MergeRequestNotes.remove(
+            projectId,
+            mergeRequestId,
+            note.id
+          );
+        }
+      }
+    }
+
+    const note = await api.MergeRequestDiscussions.addNote(
       projectId,
       mergeRequestId,
-      '我正在审核这个合并请求。请稍等片刻 ☕️'
+      currentDiscussionId,
+      id,
+      `@${data.user.username} 我正在审核这个合并请求。请稍等片刻 ☕️`
     );
 
     // Call the review function asynchronously
@@ -96,18 +151,26 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
 
         await api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
           body: `我正在审核 '${file.newPath}'，进度 ${progress}% (${index}/${total})。请稍等片刻 ☕️`,
-        });
+        }).catch(console.error);
       }
     )
-      .then(commentCount => {
+      .then(async commentCount => {
         if (commentCount === 0) {
-          api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
+          await api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
             body: '审核完毕，没有发现任务问题 😎',
-          });
+          }).catch(console.error);
+
+          // Resolve the discussion
+          await api.MergeRequestDiscussions.resolve(
+            projectId,
+            mergeRequestId,
+            currentDiscussionId,
+            true
+          );
         } else {
-          api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
+          await api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
             body: '审核完毕，发现了一些问题，请查看评论。',
-          });
+          }).catch(console.error);
         }
       })
       .catch(error => {

@@ -6,6 +6,7 @@ import {
   getChangedFiles,
   getOldAndNewFileVersions,
 } from './file-versions';
+import { Change } from './parse-diff';
 
 export async function reviewMergeRequest(
   projectId: number,
@@ -97,21 +98,22 @@ export async function placeComments(
     console.log('Commenting on line:', comment.line);
     console.log('Comment:', comment.comment);
 
-    const hunk = file.hunks.find(
-      hunk => hunk.newStart < comment.line && hunk.newEnd > comment.line
-    );
+    let change: Change | undefined;
 
-    if (!hunk) {
-      console.warn(
-        `No hunk found for line ${comment.line} in file ${file.newPath}`
-      );
-      continue;
+    while (!change) {
+      for (const hunk of file.hunks) {
+        if (hunk.newStart <= comment.line && hunk.newEnd >= comment.line) {
+          change =
+            hunk.changes.find(v => v.newLineNumber === comment.line) ||
+            hunk.changes.find(v => v.oldLineNumber === comment.line) ||
+            hunk.changes.find(v => v.lineNumber === comment.line);
+
+          if (change) {
+            break;
+          }
+        }
+      }
     }
-
-    const change =
-      hunk.changes.find(v => v.newLineNumber === comment.line) ||
-      hunk.changes.find(v => v.oldLineNumber === comment.line) ||
-      hunk.changes.find(v => v.lineNumber === comment.line);
 
     if (!change) {
       console.warn(

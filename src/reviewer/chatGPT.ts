@@ -45,8 +45,8 @@ export class CompletionChatGPT implements Reviewer {
       }
 
       // Skip if the response is error
-      if (data?.error) {
-        console.error(colors.red('Error:'), data.error);
+      if (data?.error || data?.message) {
+        console.error(colors.red('Error:'), data.error || data.message);
         return [];
       }
 
@@ -55,8 +55,6 @@ export class CompletionChatGPT implements Reviewer {
         console.error(colors.red('Error:'), 'No choices in response');
         return [];
       }
-
-      console.log('response data--->', JSON.stringify(data, null, 2));
 
       const responseContent: string[] = data.choices.map(
         (choice: any) => choice.message.content
