@@ -1,69 +1,129 @@
-import _ from 'lodash';
-
-/** This type represents a range of lines within a diff */
+/** 表示一个差异中的行号范围 */
 export type LineRange = [number, number];
 
 /**
- * Parses a diff string and extracts line number ranges that were added or modified.
- * @param {string} diff - The diff string to be parsed
- * @returns {LineRange[]} An array of line number ranges
+ * 解析一个差异字符串，并提取出新增或修改的行号范围。
+ * @param {string} diff - 要解析的差异字符串
+ * @returns {LineRange[]} 一个包含行号范围的数组
  */
 export function parseDiff(diff: string): LineRange[] {
-  // Split the diff string into separate lines
   const lines = diff.split('\n');
+  const hunkHeaderPattern = /^@@ -\d+,\d+ \+(\d+),\d+ @@/;
 
-  // Define a regex pattern for matching hunk headers in the diff
-  const pattern = /^@@ -\d+,\d+ \+(\d+),\d+ @@/;
-
-  // Define variables for storing the current line number and the start line number of the current interval
-  let lineNumber: number | null = null;
-  let currentIntervalStart: number | null = null;
-
-  // Define an array to store the resulting line number ranges
+  let currentLineNumber: number | null = null;
+  let rangeStart: number | null = null;
   const lineRanges: LineRange[] = [];
 
-  // Iterate over each line in the diff
-  for (const [index, line] of lines.entries()) {
-    // Check if the line matches the hunk header pattern
-    const match = line.match(pattern);
-    if (match) {
-      // If we're currently tracking a range, add it to the result array
-      if (currentIntervalStart !== null) {
-        lineRanges.push([currentIntervalStart, lineNumber! - 1]);
-        currentIntervalStart = null;
-      }
-      // Start tracking a new range starting from the line number in the hunk header
-      lineNumber = parseInt(match[1]);
-    } else if (lineNumber !== null) {
-      // Check if the line indicates an addition, deletion, or no change
-      const lineStartsWithPlus = line.startsWith('+');
-      const lineStartsWithMinus = line.startsWith('-');
-      const lineStartsWithSpace = line.startsWith(' ');
+  for (const line of lines) {
+    const hunkHeaderMatch = line.match(hunkHeaderPattern);
 
-      // If the line indicates an addition or deletion, start tracking a range if not already doing so
-      if (
-        (lineStartsWithPlus || lineStartsWithMinus) &&
-        currentIntervalStart === null
-      ) {
-        currentIntervalStart = lineNumber;
+    if (hunkHeaderMatch) {
+      // 如果正在追踪一个区间，先结束它
+      if (rangeStart !== null) {
+        lineRanges.push([rangeStart, currentLineNumber! - 1]);
+        rangeStart = null;
       }
-
-      // If the line indicates no change or we're at the last line, end the current range and add it to the result array
-      if (
-        currentIntervalStart !== null &&
-        (lineStartsWithSpace || index === lines.length - 1)
-      ) {
-        lineRanges.push([currentIntervalStart, lineNumber - 1]);
-        currentIntervalStart = null;
+      // 提取新的起始行号
+      currentLineNumber = parseInt(hunkHeaderMatch[1]);
+    } else if (currentLineNumber !== null) {
+      if (line.startsWith('+')) {
+        // 新增行，开始新的区间（如果尚未开始）
+        if (rangeStart === null) {
+          rangeStart = currentLineNumber;
+        }
+        currentLineNumber++;
+      } else if (line.startsWith(' ')) {
+        // 未更改行，结束当前区间（如果正在追踪）
+        if (rangeStart !== null) {
+          lineRanges.push([rangeStart, currentLineNumber - 1]);
+          rangeStart = null;
+        }
+        currentLineNumber++;
       }
+      // 删除行不影响行号，仅跳过
+    }
+  }
 
-      // If the line indicates an addition or no change, increment the current line number
-      if (lineStartsWithPlus || lineStartsWithSpace) {
-        lineNumber += 1;
+  // 如果最后还有未结束的区间，补充到结果中
+  if (rangeStart !== null) {
+    lineRanges.push([rangeStart, currentLineNumber! - 1]);
+  }
+
+  return lineRanges;
+}
+
+export interface Hunk {
+  oldStart: number;
+  oldEnd: number;
+  newStart: number;
+  newEnd: number;
+  oldLines: number;
+  newLines: number;
+  changes: Change[];
+}
+
+export interface Change {
+  type: 'insert' | 'delete' | 'normal';
+  isInsert?: boolean;
+  isDelete?: boolean;
+  isNormal?: boolean;
+  lineNumber?: number;
+  oldLineNumber?: number;
+  newLineNumber?: number;
+}
+
+export function parseDiff2(diff: string): Hunk[] {
+  const lines = diff.split('\n');
+  const hunkHeaderPattern = /^@@ -(\d+),(\d+) \+(\d+),(\d+) @@/;
+
+  const sections: Hunk[] = [];
+  let oldLineNumber: number = 0;
+  let newLineNumber: number = 0;
+
+  for (const line of lines) {
+    const hunkHeaderMatch = line.match(hunkHeaderPattern);
+
+    if (hunkHeaderMatch) {
+      const [, oldStartLine, oldLineCount, newStartLine, newLineCount] =
+        hunkHeaderMatch;
+      sections.push({
+        oldStart: Number(oldStartLine),
+        oldEnd: Number(oldStartLine) + Number(oldLineCount) - 1,
+        newStart: Number(newStartLine),
+        newEnd: Number(newStartLine) + Number(newLineCount) - 1,
+        oldLines: Number(oldLineCount),
+        newLines: Number(newLineCount),
+        changes: [],
+      });
+      oldLineNumber = Number(oldStartLine);
+      newLineNumber = Number(newStartLine);
+    } else if (sections.length) {
+      const section = sections.at(-1)!;
+      if (line.startsWith('-')) {
+        section.changes.push({
+          type: 'delete',
+          isDelete: true,
+          oldLineNumber: oldLineNumber,
+        });
+        oldLineNumber++;
+      } else if (line.startsWith('+')) {
+        section.changes.push({
+          type: 'insert',
+          isInsert: true,
+          newLineNumber: newLineNumber,
+        });
+        newLineNumber++;
+      } else if (line.startsWith(' ')) {
+        section.changes.push({
+          type: 'normal',
+          isNormal: true,
+          lineNumber: newLineNumber,
+        });
+        oldLineNumber++;
+        newLineNumber++;
       }
     }
   }
 
-  // Return the resulting line number ranges
-  return lineRanges;
+  return sections;
 }

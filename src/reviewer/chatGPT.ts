@@ -22,10 +22,14 @@ export class CompletionChatGPT implements Reviewer {
       'Content-Type': 'application/json',
     };
 
+    const t1 = process.hrtime.bigint();
+
     try {
       let data: any;
       let numberOfTries = 0;
       while (!data) {
+        console.log('Asking question...');
+
         try {
           data = await fetch(OPENAI_API, {
             method: 'POST',
@@ -34,16 +38,32 @@ export class CompletionChatGPT implements Reviewer {
           }).then(res => res.json());
         } catch (error) {
           // Failed, retrying
-          if (numberOfTries++ > 5) {
+          if (numberOfTries++ > 3) {
             // throw error;
             throw new Error('Fail to get response from OpenAI');
           }
         }
       }
 
+      // Skip if the response is error
+      if (data?.error) {
+        return [];
+      }
+
+      // Skip if the response is empty
+      if (data?.choices) {
+        return [];
+      }
+
+      console.log('response:', JSON.stringify(data, null, 2));
+
       const responseContent: string[] = data.choices.map(
         (choice: any) => choice.message.content
       );
+
+      const t2 = process.hrtime.bigint();
+
+      console.log('Response received in ' + Number(t2 - t1) / 1e9 + ' seconds');
 
       return responseContent;
     } catch (error) {

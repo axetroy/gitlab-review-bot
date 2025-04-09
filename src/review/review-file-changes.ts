@@ -3,40 +3,43 @@ import completion from '@/reviewer/index';
 import { matchComments } from './fuzzy-match-comments';
 import { sum } from 'lodash';
 import { getLineNumber, getLineNumbers } from './locate-in-source';
-import { LineRange } from '@/gitlab/parse-diff';
+import { Hunk, LineRange } from '@/gitlab/parse-diff';
 import { ReviewComment, Severity } from './review-comment';
 import { isSameIssue } from './is-same-issue';
+import { LANGUAGE } from '@/config/env';
 
 export async function reviewFile(
   paths: FileDiffResult,
   versions: MRFileVersions,
   minSeverity: Severity = Severity.low
 ): Promise<FinalReviewComment[]> {
-  let query = `我正在审核一个合并请求。请检查对文件 ${paths.newPath} 的更改:\n\n`;
+  let query = `I am reviewing a merge request. Please review the changes to the file ${paths.newPath}:\n\n`;
 
   if (versions.oldFile) {
-    query += `旧版本:\n\n${versions.oldFile}\n\n`;
-    query += `新版本:\n\n${versions.newFile}\n\n`;
+    query += `Old version:\n\n${versions.oldFile}\n\n`;
+    query += `New version:\n\n${versions.newFile}\n\n`;
   } else {
-    query += `新文件:\n\n${versions.newFile}\n\n`;
+    query += `New file:\n\n${versions.newFile}\n\n`;
   }
 
-  query += `请列出你在代码中发现的任何问题。仅包含那些你非常确定需要改进的问题。如果没有这样的问题，请保持列表为空。忽略与从其他文件导入相关的问题。问题列表应采用以下格式（同一行上可以有多个评论）:\n\n`;
+  query += `Please create a list of any issues you see with the code. Only include issues where you are really confident that they should be improved. If no such issues exist, leave the list empty. Ignore any issues related to imports from other files. And remember response in ${LANGUAGE}. The issues should have the following format (it's fine to create multiple comments on the same line):\n\n`;
 
   query += `[
     {
-      "comment": "这是第一个评论",
+      "comment": "This is the first comment",
       "severity": "medium",
       "refersTo": "  foo = bar[baz];"
     },
     {
-      "comment": "这个是第个评论",
+      "comment": "This is the second comment",
       "severity": "high",
       "refersTo": "for (const foo of bar) {\\n  baz();\\n}"
     }
   ]`;
 
   const responses = await completion.getCompletionMultiple(query, 5);
+
+  console.log('responses-->', responses);
 
   const parsedComments = responses.flatMap(response => {
     try {
@@ -46,12 +49,15 @@ export async function reviewFile(
     }
   });
 
+  console.log('parsedComments-->', JSON.stringify(parsedComments, null, 2));
+
   const finalComments = await getCombinedReviewComments(
     parsedComments,
     versions.newFile,
-    paths.changedRanges,
+    paths.hunks,
     minSeverity
   );
+
   return finalComments;
 }
 
@@ -98,26 +104,10 @@ export interface FinalReviewComment {
   severity: 'low' | 'medium' | 'high';
 }
 
-function checkIntersection(
-  startLine: number,
-  endLine: number,
-  ranges: LineRange[]
-): boolean {
-  for (const range of ranges) {
-    let [rangeStart, rangeEnd] = range;
-    rangeEnd = rangeEnd > rangeStart ? rangeEnd : rangeStart;
-    rangeStart = rangeStart < rangeEnd ? rangeStart : rangeEnd;
-    if (Math.max(startLine, rangeStart) <= Math.min(endLine, rangeEnd)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export async function getCombinedReviewComments(
   commentsByReview: ReviewComment[][],
   fileContent: string,
-  changedRanges: LineRange[],
+  hunks: Hunk[],
   minSeverity: Severity
 ): Promise<FinalReviewComment[]> {
   // Remove comments that don't apply to changed ranges.
@@ -128,8 +118,13 @@ export async function getCombinedReviewComments(
         return false;
       }
 
-      const [startLine, endLine] = range;
-      return checkIntersection(startLine, endLine, changedRanges);
+      for (const hunk of hunks) {
+        if (hunk.newStart <= range[0] && hunk.newEnd >= range[1]) {
+          return true;
+        }
+      }
+
+      return false;
     })
   );
 

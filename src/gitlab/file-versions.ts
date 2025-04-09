@@ -1,10 +1,10 @@
 import { api } from './gitlab-api';
-import { LineRange, parseDiff } from './parse-diff';
+import { Hunk, LineRange, parseDiff, parseDiff2 } from './parse-diff';
 
 export interface FileDiffResult {
   oldPath: string;
   newPath: string;
-  changedRanges: LineRange[];
+  hunks: Hunk[];
 }
 
 const codeExtensions = [
@@ -59,11 +59,8 @@ export async function getChangedFiles(
     .map(diff => ({
       oldPath: diff.old_path,
       newPath: diff.new_path,
-      changedRanges: parseDiff(diff.diff),
+      hunks: parseDiff2(diff.diff),
     }));
-
-  // Log the filtered files
-  filteredFiles.forEach(path => console.log(`File: ${path.newPath}`));
 
   // Return the filtered files
   return filteredFiles;
@@ -72,7 +69,7 @@ export async function getChangedFiles(
 export interface MRFileVersions {
   oldFile: string | null;
   newFile: string;
-  changedRanges: LineRange[];
+  hunks: Hunk[];
 }
 
 export async function getOldAndNewFileVersions(
@@ -111,5 +108,9 @@ export async function getOldAndNewFileVersions(
       throw error;
     }
   }
-  return { oldFile, newFile, changedRanges: fileDiff.changedRanges };
+  return {
+    oldFile,
+    newFile,
+    hunks: fileDiff.hunks,
+  };
 }

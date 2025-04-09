@@ -32,10 +32,9 @@ export function createWebhookApp() {
 
 async function handleWebhookRequest(
   req: express.Request,
-  res: express.Response,
+  res: express.Response
 ) {
   const data = req.body;
-  console.log('Received webhook:', JSON.stringify(data, null, 2));
 
   if (
     data.object_kind === 'note' &&
@@ -53,8 +52,13 @@ async function handleWebhookRequest(
 
 async function handleMergeRequestComment(commentBody: any, data: any) {
   const currentUser = await api.Users.showCurrentUser();
-  const mentionsCurrentUser = commentBody.includes('@' + currentUser.username);
-  const asksForReview = commentBody.toLowerCase().includes('review');
+  const mentionsCurrentUser = new RegExp(
+    `(\b|\s)?@${currentUser.username}(\b\s)?`
+  ).test(commentBody);
+
+  const asksForReview = /(\b\s)?\/review(\b|\s)?/.test(
+    commentBody.toLowerCase()
+  );
 
   let severity: SeverityLevel | null = null;
   const severityLevels: SeverityLevel[] = ['low', 'medium', 'high'];
@@ -65,7 +69,14 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
     }
   }
 
-  if (mentionsCurrentUser && asksForReview && severity) {
+  if (!severity) {
+    // If no severity level is mentioned, default to 'low'
+    severity = 'low';
+  }
+
+  if (mentionsCurrentUser && asksForReview) {
+    console.log('Received webhook:', JSON.stringify(data, null, 2));
+
     const projectId = data.project_id;
     const mergeRequestId = data.merge_request.iid;
 
@@ -73,7 +84,7 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
     reviewMergeRequest(projectId, mergeRequestId, severity).catch(error => {
       console.error(
         `Error reviewing merge request ${mergeRequestId} of project ${projectId}:`,
-        error,
+        error
       );
     });
   }
