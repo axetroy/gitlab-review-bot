@@ -18,8 +18,7 @@ export async function reviewFile(
 
   if (versions.oldFile) {
     query += outdent`
-
-    Old version of file '${paths.oldPath}':
+    The previous version of the file is:
 
     \`\`\`
     ${versions.oldFile}
@@ -27,28 +26,17 @@ export async function reviewFile(
 
 
     `;
-
-    query += outdent`
-
-    New version of file '${paths.newPath}':
-
-    \`\`\`
-    ${versions.newFile}
-    \`\`\`
-
-
-    `;
-  } else {
-    query += outdent`
-    New version of file'${paths.newPath}':
-
-    \`\`\`
-    ${versions.newFile}
-    \`\`\`
-
-
-    `;
   }
+
+  query += outdent`
+  The diff of the file is:
+
+  \`\`\`diff
+  ${paths.gitDiff}
+  \`\`\`
+
+
+  `;
 
   query += outdent`
     Please create a list of any issues you see with the code. and output the following format:

@@ -1,3 +1,4 @@
+import { MergeRequestDiffSchema } from '@gitbeaker/rest';
 import { api } from './gitlab-api';
 import { Hunk, LineRange, parseDiff, parseDiff2 } from './parse-diff';
 
@@ -5,6 +6,7 @@ export interface FileDiffResult {
   oldPath: string;
   newPath: string;
   hunks: Hunk[];
+  gitDiff: string;
 }
 
 const codeExtensions = [
@@ -46,6 +48,44 @@ const codeExtensions = [
   '.exs',
 ];
 
+/**
+ * 将 GitLab API 返回的 Diff 转换为标准 Git 格式
+ * @param {Object} change - GitLab API 返回的 changes 数组
+ * @returns {string} 标准 Git Diff 文本
+ */
+function convertGitLabDiffToGit(change: MergeRequestDiffSchema) {
+  // 处理文件路径（新文件/删除文件场景）
+  const oldPath = change.deleted_file ? '/dev/null' : `a/${change.old_path}`;
+  const newPath = change.new_file ? '/dev/null' : `b/${change.new_path}`;
+
+  // 构建 Git 标准头
+  let gitDiff = `--- ${oldPath}\n+++ ${newPath}\n`;
+
+  // 处理二进制文件
+  if (change.diff === 'Binary files differ') {
+    return gitDiff + 'Binary files differ\n';
+  }
+
+  // 处理文本差异
+  if (change.diff) {
+    // 按行分割并跳过 GitLab 的第一行（如 "diff --git a/file b/file"）
+    const lines = change.diff.split('\n').slice(1);
+
+    // 清理 GitLab 的特殊格式（行末空格）
+    gitDiff += lines
+      .map(line => {
+        // 保留 Git 的上下文标记（+/-/空格开头）
+        if (/^[\s+-]/.test(line)) {
+          return line.replace(/\s+$/, ''); // 移除行尾空格
+        }
+        return line;
+      })
+      .join('\n');
+  }
+
+  return gitDiff;
+}
+
 export async function getChangedFiles(
   projectId: number,
   mergeRequestId: number
@@ -60,6 +100,7 @@ export async function getChangedFiles(
       oldPath: diff.old_path,
       newPath: diff.new_path,
       hunks: parseDiff2(diff.diff),
+      gitDiff: convertGitLabDiffToGit(diff),
     }));
 
   // Return the filtered files
