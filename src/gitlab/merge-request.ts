@@ -52,8 +52,6 @@ export async function reviewMergeRequest(
       mergeRequestId,
       'Your review is complete. No comments to place.'
     );
-
-    return;
   }
 
   console.log('Review complete. Comments placed:', commentCount);
