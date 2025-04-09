@@ -19,32 +19,64 @@ export async function reviewFile(
   if (versions.oldFile) {
     query += outdent`
 
-    Old version of'${paths.oldPath}':
+    Old version of file '${paths.oldPath}':
 
+    \`\`\`
     ${versions.oldFile}
+    \`\`\`
 
 
     `;
 
     query += outdent`
 
-    New version of '${paths.newPath}':
+    New version of file '${paths.newPath}':
 
+    \`\`\`
     ${versions.newFile}
+    \`\`\`
 
 
     `;
   } else {
     query += outdent`
-    New version of '${paths.newPath}':
+    New version of file'${paths.newPath}':
 
+    \`\`\`
     ${versions.newFile}
+    \`\`\`
 
 
     `;
   }
 
-  query += `Please create a list of any issues you see with the code. Only include issues where you are really confident that they should be improved. If no such issues exist, leave the list empty. Ignore any issues related to imports from other files. And remember response in ${LANGUAGE}. The issues should have the following format (it's fine to create multiple comments on the same line):\n\n`;
+  query += outdent`
+    Please create a list of any issues you see with the code. and output the following format:
+
+    [
+      {
+        "comment": "This is the first comment",
+        "severity": "medium",
+        "refersTo": "  foo = bar[baz];"
+      },
+      {
+        "comment": "This is the second comment",
+        "severity": "high",
+        "refersTo": "for (const foo of bar) {\\n  baz();\\n}"
+      }
+    ]
+
+    But you must to pay attention:
+    1. You should only include issues that are related to the code itself and not the style.
+    2. Only include issues where you are really confident.
+    3. Ignore any issues related to imports from other files.
+    4. If the code is already perfect, please return an empty list.
+    5. If no such issues exist or you don't know the contents of the file, please return an empty list.
+    6. If you don't know how to answer or are missing key information, please return an empty list.
+    7. You need to answer me in ${LANGUAGE}.
+    8. In any case, only the above format is output, and don't explanation of this output is ignored.
+    9. it's fine to create multiple comments on the same line
+  `;
 
   query += outdent`
     [
@@ -62,8 +94,6 @@ export async function reviewFile(
     `;
 
   const responses = await completion.getCompletionMultiple(query, 5);
-
-  console.log('responses-->', responses);
 
   const parsedComments = responses.flatMap(response => {
     try {
@@ -101,7 +131,7 @@ const parseComments = (input: string): ReviewComment[] => {
     const parsed: ReviewComment[] = JSON.parse(jsonString);
     return parsed;
   } catch (err) {
-    console.error('Failed to parse JSON: ', err);
+    console.error('Failed to parse JSON: ', jsonString);
     throw new Error('Invalid input');
   }
 };
