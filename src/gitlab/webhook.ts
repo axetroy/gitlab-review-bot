@@ -80,12 +80,45 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
     const projectId = data.project_id;
     const mergeRequestId = data.merge_request.iid;
 
+    const note = await api.MergeRequestNotes.create(
+      projectId,
+      mergeRequestId,
+      '我正在审核这个合并请求。请稍等片刻 ☕️'
+    );
+
     // Call the review function asynchronously
-    reviewMergeRequest(projectId, mergeRequestId, severity).catch(error => {
-      console.error(
-        `Error reviewing merge request ${mergeRequestId} of project ${projectId}:`,
-        error
-      );
-    });
+    reviewMergeRequest(
+      projectId,
+      mergeRequestId,
+      severity,
+      async (index, total, file) => {
+        const progress = Math.ceil((index / total) * 100);
+
+        await api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
+          body: `我正在审核 '${file.newPath}'，进度 ${progress}% (${index}/${total})。请稍等片刻 ☕️`,
+        });
+      }
+    )
+      .then(commentCount => {
+        if (commentCount === 0) {
+          api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
+            body: '审核完毕，没有发现任务问题 😎',
+          });
+        } else {
+          api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
+            body: '审核完毕，发现了一些问题，请查看评论。',
+          });
+        }
+      })
+      .catch(error => {
+        console.error(
+          `Error reviewing merge request ${mergeRequestId} of project ${projectId}:`,
+          error
+        );
+
+        api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
+          body: '审核过程中发生错误，请检查日志。',
+        });
+      });
   }
 }

@@ -10,13 +10,22 @@ import {
 export async function reviewMergeRequest(
   projectId: number,
   mergeRequestId: number,
-  minSeverity: SeverityLevel = 'low'
-): Promise<void> {
+  minSeverity: SeverityLevel = 'low',
+  onProgress: (
+    index: number,
+    total: number,
+    file: FileDiffResult
+  ) => Promise<void>
+): Promise<number> {
   const changedFiles = await getChangedFiles(projectId, mergeRequestId);
 
   let commentCount = 0;
 
+  let index = 1;
+
   for (const paths of changedFiles) {
+    await onProgress(index++, changedFiles.length, paths);
+
     const { oldFile, newFile } = await getOldAndNewFileVersions(
       projectId,
       mergeRequestId,
@@ -46,15 +55,9 @@ export async function reviewMergeRequest(
     }
   }
 
-  if (commentCount === 0) {
-    await api.MergeRequestNotes.create(
-      projectId,
-      mergeRequestId,
-      'Your review is complete. No comments to place.'
-    );
-  }
-
   console.log('Review complete. Comments placed:', commentCount);
+
+  return commentCount;
 }
 
 export async function placeComments(
@@ -63,7 +66,11 @@ export async function placeComments(
   comments: FinalReviewComment[],
   file: FileDiffResult
 ): Promise<number> {
-  console.log('Placing comments on merge request:', mergeRequestId);
+  console.log(
+    'Placing comments on merge request:',
+    mergeRequestId,
+    file.newPath
+  );
 
   // Fetch the specific merge request using the GitLab API
   const mergeRequest = await api.MergeRequests.show(projectId, mergeRequestId);
