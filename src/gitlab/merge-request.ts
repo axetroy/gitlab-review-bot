@@ -24,6 +24,7 @@ export async function reviewMergeRequest(
   let index = 1;
 
   for (const paths of changedFiles) {
+    console.log(`Reviewing file: ${paths.newPath}`);
     await onProgress(index++, changedFiles.length, paths);
 
     const { oldFile, newFile } = await getOldAndNewFileVersions(
@@ -66,12 +67,6 @@ export async function placeComments(
   comments: FinalReviewComment[],
   file: FileDiffResult
 ): Promise<number> {
-  console.log(
-    'Placing comments on merge request:',
-    mergeRequestId,
-    file.newPath
-  );
-
   // Fetch the specific merge request using the GitLab API
   const mergeRequest = await api.MergeRequests.show(projectId, mergeRequestId);
 
