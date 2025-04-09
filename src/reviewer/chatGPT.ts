@@ -46,11 +46,13 @@ export class CompletionChatGPT implements Reviewer {
 
       // Skip if the response is error
       if (data?.error) {
+        console.error(colors.red('Error:'), data.error);
         return [];
       }
 
       // Skip if the response is empty
-      if (data?.choices) {
+      if (!data?.choices) {
+        console.error(colors.red('Error:'), 'No choices in response');
         return [];
       }
 
