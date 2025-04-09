@@ -1,3 +1,7 @@
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
 export const REVIEWER = process.env.REVIEWER || 'chatGPT';
 export const OPENAI_API = process.env.OPENAI_API || 'https://api.openai.com/v1/chat/completions';
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';

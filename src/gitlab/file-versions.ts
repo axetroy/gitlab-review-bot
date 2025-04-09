@@ -14,6 +14,7 @@ const codeExtensions = [
   '.tsx',
   '.mjs',
   '.cjs',
+  '.vue',
   '.css',
   '.scss',
   '.sass',

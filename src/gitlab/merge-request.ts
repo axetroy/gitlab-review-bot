@@ -61,7 +61,6 @@ export async function placeComments(
 
   // Iterate over each comment to be placed
   for (const comment of comments) {
-    console.log(comment.comment);
     // Use the GitLab API to create the comment on the merge request
 
     // FIXME: The position object is not being created correctly
@@ -77,7 +76,7 @@ export async function placeComments(
           headSha: head_sha,
           startSha: start_sha,
           newPath: file.newPath,
-          oldPath: file.oldPath,
+          // oldPath: file.oldPath,
           positionType: 'text',
           newLine: String(comment.line),
         },
