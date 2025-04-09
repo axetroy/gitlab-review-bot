@@ -14,6 +14,8 @@ export async function reviewMergeRequest(
 ): Promise<void> {
   const changedFiles = await getChangedFiles(projectId, mergeRequestId);
 
+  let commentCount = 0;
+
   for (const paths of changedFiles) {
     const { oldFile, newFile } = await getOldAndNewFileVersions(
       projectId,
@@ -25,17 +27,36 @@ export async function reviewMergeRequest(
       {
         oldFile,
         newFile,
+        oldPath: paths.oldPath,
+        newPath: paths.newPath,
         hunks: paths.hunks,
       },
       Severity[minSeverity]
     );
 
     try {
-      await placeComments(projectId, mergeRequestId, comments, paths);
+      commentCount += await placeComments(
+        projectId,
+        mergeRequestId,
+        comments,
+        paths
+      );
     } catch (error) {
       console.error(error);
     }
   }
+
+  if (commentCount === 0) {
+    await api.MergeRequestNotes.create(
+      projectId,
+      mergeRequestId,
+      'Your review is complete. No comments to place.'
+    );
+
+    return;
+  }
+
+  console.log('Review complete. Comments placed:', commentCount);
 }
 
 export async function placeComments(
@@ -43,7 +64,7 @@ export async function placeComments(
   mergeRequestId: number,
   comments: FinalReviewComment[],
   file: FileDiffResult
-): Promise<void> {
+): Promise<number> {
   console.log('Placing comments on merge request:', mergeRequestId);
 
   // Fetch the specific merge request using the GitLab API
@@ -56,8 +77,6 @@ export async function placeComments(
   );
   const base_sha = targetBranch.commit.id;
 
-  console.log('Base SHA:', base_sha);
-
   // Get source branch SHA
   const sourceBranch = await api.Branches.show(
     projectId,
@@ -65,12 +84,10 @@ export async function placeComments(
   );
   const head_sha = sourceBranch.commit.id;
 
-  console.log('Head SHA:', head_sha);
-
   // In this case, as you want start_sha to be equal to base_sha
   const start_sha = base_sha;
 
-  console.log(JSON.stringify(comments, null, 2));
+  console.log('comment-->', JSON.stringify(comments, null, 2));
 
   // Iterate over each comment to be placed
   for (const comment of comments) {
@@ -155,4 +172,6 @@ export async function placeComments(
       );
     }
   }
+
+  return comments.length;
 }

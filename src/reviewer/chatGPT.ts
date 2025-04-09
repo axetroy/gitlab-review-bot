@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { OPENAI_API, OPENAI_API_KEY, OPENAI_MODEL } from '@/config/env';
 import colors from 'colors';
 import { Reviewer } from './index';
@@ -55,7 +54,7 @@ export class CompletionChatGPT implements Reviewer {
         return [];
       }
 
-      console.log('response:', JSON.stringify(data, null, 2));
+      console.log('response data--->', JSON.stringify(data, null, 2));
 
       const responseContent: string[] = data.choices.map(
         (choice: any) => choice.message.content

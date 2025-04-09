@@ -69,6 +69,8 @@ export async function getChangedFiles(
 export interface MRFileVersions {
   oldFile: string | null;
   newFile: string;
+  oldPath: string | null;
+  newPath: string;
   hunks: Hunk[];
 }
 
@@ -102,7 +104,7 @@ export async function getOldAndNewFileVersions(
     )) as string;
   } catch (error) {
     // File might not exist in the target branch (e.g., if it was added in this merge request)
-    if ((error as any).description === '404 File Not Found') {
+    if ((error as any).cause?.description === '404 File Not Found') {
       oldFile = null;
     } else {
       throw error;
@@ -111,6 +113,8 @@ export async function getOldAndNewFileVersions(
   return {
     oldFile,
     newFile,
+    oldPath: fileDiff.oldPath,
+    newPath: fileDiff.newPath,
     hunks: fileDiff.hunks,
   };
 }

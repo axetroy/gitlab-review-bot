@@ -2,8 +2,9 @@ import { FileDiffResult, MRFileVersions } from '@/gitlab/file-versions';
 import completion from '@/reviewer/index';
 import { matchComments } from './fuzzy-match-comments';
 import { sum } from 'lodash';
+import outdent from 'outdent';
 import { getLineNumber, getLineNumbers } from './locate-in-source';
-import { Hunk, LineRange } from '@/gitlab/parse-diff';
+import { Hunk } from '@/gitlab/parse-diff';
 import { ReviewComment, Severity } from './review-comment';
 import { isSameIssue } from './is-same-issue';
 import { LANGUAGE } from '@/config/env';
@@ -13,29 +14,52 @@ export async function reviewFile(
   versions: MRFileVersions,
   minSeverity: Severity = Severity.low
 ): Promise<FinalReviewComment[]> {
-  let query = `I am reviewing a merge request. Please review the changes to the file ${paths.newPath}:\n\n`;
+  let query = `I am reviewing a merge request. Please review the changes to the file '${paths.newPath}':\n\n`;
 
   if (versions.oldFile) {
-    query += `Old version:\n\n${versions.oldFile}\n\n`;
-    query += `New version:\n\n${versions.newFile}\n\n`;
+    query += outdent`
+
+    Old version of'${paths.oldPath}':
+
+    ${versions.oldFile}
+
+
+    `;
+
+    query += outdent`
+
+    New version of '${paths.newPath}':
+
+    ${versions.newFile}
+
+
+    `;
   } else {
-    query += `New file:\n\n${versions.newFile}\n\n`;
+    query += outdent`
+    New version of '${paths.newPath}':
+
+    ${versions.newFile}
+
+
+    `;
   }
 
   query += `Please create a list of any issues you see with the code. Only include issues where you are really confident that they should be improved. If no such issues exist, leave the list empty. Ignore any issues related to imports from other files. And remember response in ${LANGUAGE}. The issues should have the following format (it's fine to create multiple comments on the same line):\n\n`;
 
-  query += `[
-    {
-      "comment": "This is the first comment",
-      "severity": "medium",
-      "refersTo": "  foo = bar[baz];"
-    },
-    {
-      "comment": "This is the second comment",
-      "severity": "high",
-      "refersTo": "for (const foo of bar) {\\n  baz();\\n}"
-    }
-  ]`;
+  query += outdent`
+    [
+      {
+        "comment": "This is the first comment",
+        "severity": "medium",
+        "refersTo": "  foo = bar[baz];"
+      },
+      {
+        "comment": "This is the second comment",
+        "severity": "high",
+        "refersTo": "for (const foo of bar) {\\n  baz();\\n}"
+      }
+    ]
+    `;
 
   const responses = await completion.getCompletionMultiple(query, 5);
 
@@ -48,8 +72,6 @@ export async function reviewFile(
       return [];
     }
   });
-
-  console.log('parsedComments-->', JSON.stringify(parsedComments, null, 2));
 
   const finalComments = await getCombinedReviewComments(
     parsedComments,
