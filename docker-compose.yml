@@ -14,3 +14,5 @@ services:
       - LANGUAGE=${LANGUAGE}
     networks:
       - default
+    ports:
+      - "3000:3000"  # Expose the service on port 8080
