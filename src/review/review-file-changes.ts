@@ -44,15 +44,28 @@ export async function reviewFile(
     [
       {
         "comment": "This is the first comment",
+        "details": "This is the details of the first comment",
         "severity": "medium",
+        "startLine": 52,
+        "endLine": 53,
         "refersTo": "  foo = bar[baz];"
       },
       {
         "comment": "This is the second comment",
+        "details": "This is the details of the second comment",
         "severity": "high",
+        "startLine": 52,
+        "endLine": 53,
         "refersTo": "for (const foo of bar) {\\n  baz();\\n}"
       }
     ]
+
+    Format details:
+    - The comment should be a short description of the issue
+    - The severity should be one of the following: low, medium, high
+    - The startLine and endLine should be the line numbers of the code that after patch the diff.
+    - The refersTo should be the code that the comment refers to
+    - The comment should be in ${LANGUAGE}
 
     You should check the code for any potential issues, such as:
     - Bugs
@@ -73,21 +86,6 @@ export async function reviewFile(
     - In any case, only the above format is output, and don't explanation of this output is ignored
     - it's fine to create multiple comments on the same line
   `;
-
-  query += outdent`
-    [
-      {
-        "comment": "This is the first comment",
-        "severity": "medium",
-        "refersTo": "  foo = bar[baz];"
-      },
-      {
-        "comment": "This is the second comment",
-        "severity": "high",
-        "refersTo": "for (const foo of bar) {\\n  baz();\\n}"
-      }
-    ]
-    `;
 
   const responses = await completion.getCompletionMultiple(query, 5);
 
