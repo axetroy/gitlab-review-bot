@@ -67,7 +67,7 @@ export class CompletionChatGPT implements Reviewer {
 
     const data = response.data;
 
-    if (!Array.isArray(data.chooses)) {
+    if (!Array.isArray(data.choices)) {
       const errorMessage = String(data.message) || String(data.error);
 
       throw new Error('Failed to get response: ' + errorMessage);
