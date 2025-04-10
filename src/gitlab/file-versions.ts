@@ -68,8 +68,7 @@ function convertGitLabDiffToGit(change: MergeRequestDiffSchema) {
 
   // 处理文本差异
   if (change.diff) {
-    // 按行分割并跳过 GitLab 的第一行（如 "diff --git a/file b/file"）
-    const lines = change.diff.split('\n').slice(1);
+    const lines = change.diff.split('\n')
 
     // 清理 GitLab 的特殊格式（行末空格）
     gitDiff += lines
