@@ -74,7 +74,12 @@ async function handleWebhookRequest(
   ) {
     const commentBody = data.object_attributes.note;
 
-    handleMergeRequestComment(commentBody, data);
+    handleMergeRequestComment(commentBody, data).catch(error => {
+      console.error(
+        `Error handling merge request comment: ${error.message}`,
+        error
+      );
+    });
   }
 
   // Always send a 200 OK response immediately,
