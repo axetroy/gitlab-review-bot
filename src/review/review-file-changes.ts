@@ -212,5 +212,10 @@ function locateRefersTo(
     }
   }
 
+  // If not found, check if the refersTo is at the start of the file
+  if (startLine !== 0) {
+    return locateRefersTo(fileContent, refersTo, 0);
+  }
+
   return null;
 }
