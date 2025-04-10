@@ -126,6 +126,10 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
     );
 
     for (const discussion of discussions) {
+      if (discussion.id === currentDiscussionId) {
+        continue;
+      }
+
       for (const note of discussion.notes ?? []) {
         if (note.author.username === currentUser.username) {
           // remove the bot's own comment
