@@ -79,8 +79,6 @@ export async function reviewFile(
     }
   });
 
-  console.log('parsedComments-->', JSON.stringify(parsedComments, null, 2));
-
   const finalComments: FinalReviewComment[] = [];
 
   for (const comments of parsedComments) {
