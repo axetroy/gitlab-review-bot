@@ -159,19 +159,19 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
           await api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
             body: '审核完毕，没有发现任务问题 😎',
           }).catch(console.error);
-
-          // Resolve the discussion
-          await api.MergeRequestDiscussions.resolve(
-            projectId,
-            mergeRequestId,
-            currentDiscussionId,
-            true
-          );
         } else {
           await api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
             body: '审核完毕，发现了一些问题，请查看评论。',
           }).catch(console.error);
         }
+
+        // Resolve the discussion
+        await api.MergeRequestDiscussions.resolve(
+          projectId,
+          mergeRequestId,
+          currentDiscussionId,
+          true
+        );
       })
       .catch(error => {
         console.error(
