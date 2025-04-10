@@ -26,6 +26,7 @@ export async function reviewMergeRequest(
 
   for (const paths of changedFiles) {
     console.log(`Reviewing file: ${paths.newPath}`);
+
     await onProgress(index++, changedFiles.length, paths);
 
     const { oldFile, newFile } = await getOldAndNewFileVersions(
@@ -33,6 +34,7 @@ export async function reviewMergeRequest(
       mergeRequestId,
       paths
     );
+
     const comments = await reviewFile(
       paths,
       {
@@ -43,18 +45,29 @@ export async function reviewMergeRequest(
         hunks: paths.hunks,
       },
       Severity[minSeverity]
-    );
+    )
+      .catch(async error => {
+        console.error('Error during review:', error);
 
-    try {
-      commentCount += await placeComments(
-        projectId,
-        mergeRequestId,
-        comments,
-        paths
-      );
-    } catch (error) {
-      console.error(error);
-    }
+        await api.MergeRequestNotes.create(
+          projectId,
+          mergeRequestId,
+          `Error during review the file ${paths.newPath}: ${error.message}`
+        );
+
+        return [];
+      })
+      .catch(() => []);
+
+    commentCount += await placeComments(
+      projectId,
+      mergeRequestId,
+      comments,
+      paths
+    ).catch(error => {
+      console.error('Error placing comments:', error);
+      return 0;
+    });
   }
 
   console.log('Review complete. Comments placed:', commentCount);
