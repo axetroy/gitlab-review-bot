@@ -159,7 +159,6 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
     reviewMergeRequest(
       projectId,
       mergeRequestId,
-      severity,
       async (index, total, file) => {
         const progress = Math.ceil((index / total) * 100);
 

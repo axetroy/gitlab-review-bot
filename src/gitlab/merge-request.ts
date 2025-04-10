@@ -1,17 +1,14 @@
 import { api } from './gitlab-api';
 import { FinalReviewComment, reviewFile } from '@/review/review-file-changes';
-import { Severity, SeverityLevel } from '@/review/review-comment';
 import {
   FileDiffResult,
   getChangedFiles,
   getOldAndNewFileVersions,
 } from './file-versions';
-import { Change } from './parse-diff';
 
 async function getCommentsFromFile(
   projectId: number,
   mergeRequestId: number,
-  minSeverity: SeverityLevel,
   paths: FileDiffResult
 ) {
   const { oldFile, newFile } = await getOldAndNewFileVersions(
@@ -20,17 +17,13 @@ async function getCommentsFromFile(
     paths
   );
 
-  const comments = await reviewFile(
-    paths,
-    {
-      oldFile,
-      newFile,
-      oldPath: paths.oldPath,
-      newPath: paths.newPath,
-      hunks: paths.hunks,
-    },
-    Severity[minSeverity]
-  );
+  const comments = await reviewFile(paths, {
+    oldFile,
+    newFile,
+    oldPath: paths.oldPath,
+    newPath: paths.newPath,
+    hunks: paths.hunks,
+  });
 
   return comments;
 }
@@ -38,7 +31,6 @@ async function getCommentsFromFile(
 export async function reviewMergeRequest(
   projectId: number,
   mergeRequestId: number,
-  minSeverity: SeverityLevel = 'low',
   onProgress: (
     index: number,
     total: number,
@@ -59,7 +51,6 @@ export async function reviewMergeRequest(
     const comments = await getCommentsFromFile(
       projectId,
       mergeRequestId,
-      minSeverity,
       paths
     ).catch(async error => {
       console.error('Error during review:', error);
@@ -121,35 +112,7 @@ export async function placeComments(
   for (const comment of comments) {
     // Use the GitLab API to create the comment on the merge request
 
-    console.log('Comment to file:', file.newPath);
-    console.log('Commenting on line:', comment.line);
-    console.log('Comment:', comment.comment);
-
-    let change: Change | undefined;
-
-    while (!change) {
-      for (const hunk of file.hunks) {
-        if (hunk.newStart <= comment.line && hunk.newEnd >= comment.line) {
-          change =
-            hunk.changes.find(v => v.newLineNumber === comment.line) ||
-            hunk.changes.find(v => v.oldLineNumber === comment.line) ||
-            hunk.changes.find(v => v.lineNumber === comment.line);
-
-          if (change) {
-            break;
-          }
-        }
-      }
-    }
-
-    if (!change) {
-      console.warn(
-        `No change found for line ${comment.line} in file ${file.newPath}`
-      );
-      continue;
-    }
-
-    if (change.isInsert) {
+    if (comment.newFile) {
       await api.MergeRequestDiscussions.create(
         projectId,
         mergeRequestId,
@@ -161,11 +124,11 @@ export async function placeComments(
             startSha: start_sha,
             newPath: file.newPath,
             positionType: 'text',
-            newLine: String(comment.line),
+            newLine: String(comment.range?.at(0)),
           },
         }
       );
-    } else if (change.isDelete) {
+    } else if (comment.oldFile) {
       await api.MergeRequestDiscussions.create(
         projectId,
         mergeRequestId,
@@ -177,11 +140,11 @@ export async function placeComments(
             startSha: start_sha,
             oldPath: file.oldPath,
             positionType: 'text',
-            oldLine: String(comment.line),
+            oldLine: String(comment.range?.at(0)),
           },
         }
       );
-    } else if (change.isNormal) {
+    } else {
       await api.MergeRequestDiscussions.create(
         projectId,
         mergeRequestId,
@@ -194,8 +157,8 @@ export async function placeComments(
             newPath: file.newPath,
             oldPath: file.oldPath,
             positionType: 'text',
-            newLine: String(comment.line),
-            oldLine: String(comment.line),
+            newLine: String(comment.range?.at(0)),
+            oldLine: String(comment.range?.at(0)),
           },
         }
       );

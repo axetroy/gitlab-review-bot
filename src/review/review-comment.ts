@@ -9,5 +9,6 @@ export type SeverityLevel = 'low' | 'medium' | 'high';
 export type ReviewComment = {
   refersTo: string;
   comment: string;
+  lineNumber: string;
   severity: 'low' | 'medium' | 'high';
 };
