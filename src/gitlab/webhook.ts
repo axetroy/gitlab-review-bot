@@ -169,15 +169,11 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
       }
     )
       .then(async commentCount => {
-        if (commentCount === 0) {
-          await api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
-            body: '审核完毕，没有发现任务问题 😎',
-          }).catch(console.error);
-        } else {
-          await api.MergeRequestNotes.edit(projectId, mergeRequestId, note.id, {
-            body: '审核完毕，发现了一些问题，请查看评论。',
-          }).catch(console.error);
-        }
+        await api.MergeRequestNotes.remove(
+          projectId,
+          mergeRequestId,
+          note.id
+        ).catch(console.error);
 
         // Resolve the discussion
         await api.MergeRequestDiscussions.resolve(
