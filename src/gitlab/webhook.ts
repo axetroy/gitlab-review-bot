@@ -128,7 +128,12 @@ async function handleMergeRequestComment(commentBody: any, data: any) {
             projectId,
             mergeRequestId,
             note.id
-          );
+          ).catch(error => {
+            console.error(
+              `Error removing bot's comment ${note.id} from discussion ${discussion.id}:`,
+              error
+            );
+          });
         }
       }
     }
