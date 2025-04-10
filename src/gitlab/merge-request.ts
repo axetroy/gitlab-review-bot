@@ -8,6 +8,33 @@ import {
 } from './file-versions';
 import { Change } from './parse-diff';
 
+async function getCommentsFromFile(
+  projectId: number,
+  mergeRequestId: number,
+  minSeverity: SeverityLevel,
+  paths: FileDiffResult
+) {
+  const { oldFile, newFile } = await getOldAndNewFileVersions(
+    projectId,
+    mergeRequestId,
+    paths
+  );
+
+  const comments = await reviewFile(
+    paths,
+    {
+      oldFile,
+      newFile,
+      oldPath: paths.oldPath,
+      newPath: paths.newPath,
+      hunks: paths.hunks,
+    },
+    Severity[minSeverity]
+  );
+
+  return comments;
+}
+
 export async function reviewMergeRequest(
   projectId: number,
   mergeRequestId: number,
@@ -29,35 +56,22 @@ export async function reviewMergeRequest(
 
     await onProgress(index++, changedFiles.length, paths);
 
-    const { oldFile, newFile } = await getOldAndNewFileVersions(
+    const comments = await getCommentsFromFile(
       projectId,
       mergeRequestId,
+      minSeverity,
       paths
-    );
+    ).catch(async error => {
+      console.error('Error during review:', error);
 
-    const comments = await reviewFile(
-      paths,
-      {
-        oldFile,
-        newFile,
-        oldPath: paths.oldPath,
-        newPath: paths.newPath,
-        hunks: paths.hunks,
-      },
-      Severity[minSeverity]
-    )
-      .catch(async error => {
-        console.error('Error during review:', error);
+      await api.MergeRequestNotes.create(
+        projectId,
+        mergeRequestId,
+        `Error during review the file ${paths.newPath}: ${error.message}`
+      );
 
-        await api.MergeRequestNotes.create(
-          projectId,
-          mergeRequestId,
-          `Error during review the file ${paths.newPath}: ${error.message}`
-        );
-
-        return [];
-      })
-      .catch(() => []);
+      return [];
+    });
 
     commentCount += await placeComments(
       projectId,
