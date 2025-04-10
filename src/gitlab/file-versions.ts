@@ -1,6 +1,6 @@
 import { MergeRequestDiffSchema } from '@gitbeaker/rest';
 import { api } from './gitlab-api';
-import { Hunk, LineRange, parseDiff, parseDiff2 } from './parse-diff';
+import { Hunk, parseDiff2 } from './parse-diff';
 
 export interface FileDiffResult {
   oldPath: string;
@@ -68,7 +68,7 @@ function convertGitLabDiffToGit(change: MergeRequestDiffSchema) {
 
   // 处理文本差异
   if (change.diff) {
-    const lines = change.diff.split('\n')
+    const lines = change.diff.split('\n');
 
     // 清理 GitLab 的特殊格式（行末空格）
     gitDiff += lines
