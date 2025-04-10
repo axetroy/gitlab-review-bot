@@ -1,6 +1,6 @@
 import { OPENAI_API, OPENAI_API_KEY, OPENAI_MODEL } from '@/config/env';
 import { Reviewer } from './index';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 
 export class CompletionChatGPT implements Reviewer {
   static name = 'chatGPT';
@@ -24,12 +24,46 @@ export class CompletionChatGPT implements Reviewer {
 
     const t1 = process.hrtime.bigint();
 
-    const response = await axios(OPENAI_API, {
-      method: 'POST',
-      headers: headers,
-      data: questionData,
-      timeout: 60 * 1000,
-    });
+    let response: AxiosResponse;
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 second
+
+    while (true) {
+      retryCount++;
+      if (retryCount > maxRetries) {
+        throw new Error('Max retries reached');
+      }
+      try {
+        response = await axios(OPENAI_API, {
+          method: 'POST',
+          headers: headers,
+          data: questionData,
+          timeout: 120 * 1000,
+        });
+
+        break;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const errorMessage = String(
+            error.response?.data?.error?.message || error.message
+          ).toLowerCase();
+
+          // Retry on timeout errors
+          if (errorMessage.includes('timeout')) {
+            console.log('Retrying in ' + retryDelay / 1000 + ' seconds...');
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          } else {
+            console.error('An error occurred:', errorMessage);
+            throw new Error('Request failed: ' + errorMessage);
+          }
+        } else {
+          console.error('An unexpected error occurred:', error);
+          throw new Error('Unexpected error: ' + error);
+        }
+      }
+    }
 
     const data = response.data;
 
